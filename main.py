@@ -55,17 +55,26 @@ imgRows, imgCols, _ = image1.shape
 objects = np.unique(labelImage)
 numObjects = len(objects) - 1
 objectSizeThres = 200
-objectList = []
-for a in range(1, numObjects):
+objectList = [] * numObjects
+
+for a in range(1, numObjects+1):
     objectCoord = np.where(labelImage == a)
     objectRows = objectCoord[0]
     objectCols = objectCoord[1]
     if len(objectRows) and len(objectCols) > objectSizeThres:
-        object = np.zeros((imgRows, imgCols), dtype='int')
-        for r in range(objectRows[0], objectRows[-1]):
-            for c in range(objectCols[0], objectCols[-1]):
-                object[r, c] = 1
-        objectList[a-1] = object
+        tempImage = np.isin(labelImage, a).astype(np.uint8)
+        objectList.append(tempImage)
+
+# for a in range(1, numObjects):
+#     objectCoord = np.where(labelImage == a)
+#     objectRows = objectCoord[0]
+#     objectCols = objectCoord[1]
+#     if len(objectRows) and len(objectCols) > objectSizeThres:
+#         object = np.zeros((imgRows, imgCols), dtype='int')
+#         for r in range(objectRows[0], objectRows[-1]):
+#             for c in range(objectCols[0], objectCols[-1]):
+#                 object[r, c] = 1
+#         objectList[a-1] = object
 # possible addition box-in segmented objects
 # # to make the background transparent, pass the value of `bg_label`,
 # # and leave `bg_color` as `None` and `kind` as `overlay`
