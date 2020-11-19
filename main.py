@@ -8,9 +8,29 @@ from skimage.filters import threshold_otsu
 from skimage.segmentation import clear_border
 from skimage.measure import label, regionprops
 from skimage.morphology import closing, square
+from itertools import combinations
 from skimage.color import label2rgb
 import scipy.ndimage as nd
 from skimage import color
+
+# dictionary containing the area ratios for each combination of coins.
+coinRatios = {
+    # These are the ratios of the smaller coins to the larger coins
+    "Dime-Quarter": 0.504344,
+    "Penny-Quarter": 0.714169,
+    "Dime-Penny": 0.733127,
+    "Nickel-Quarter": 0.737267,
+    "Dime-Nickel": 0.774993,
+    "Penny-Nickel": 0.900731,
+
+    # These are the ratios of the larger coins to the smaller coins (the reciprocals of the above values)
+    "Nickel-Penny": 1.110209,
+    "Nickel-Dime": 1.290334,
+    "Quarter-Nickel": 1.356360,
+    "Penny-Dime": 1.364020,
+    "Quarter-Penny": 1.400229,
+    "Quarter-Dime": 1.982773
+}
 
 # read in images
 image1 = cv2.imread('coinImage1.png')
@@ -27,11 +47,6 @@ plt.imshow(image2)
 plt.xticks([]), plt.yticks([])
 plt.show()
 
-# display the images. press 0 key to close them
-# cv2.imshow('First coin image', image1)
-# cv2.imshow('Second coin image', image2)
-# cv2.waitKey(0)
-
 # generate grayscale images
 grayImage1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
 grayImage2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
@@ -44,12 +59,17 @@ binaryNot = np.uint8(cv2.bitwise_not(binary))
 # Morphological filtering
 structElement = disk(radius=50)
 closedBinaryImage = np.uint8(closing(binaryNot, structElement))
+print("closing operation complete.")  # added this verification message because the operation takes a while
 
 # remove artifacts connected to image border
+# TODO find another way to do this - removes the coin objects themselves if no actual artifacts present
 cleared = clear_border(closedBinaryImage)
 
 # label image regions
 labelImage = label(cleared)
+
+plt.imshow(labelImage)
+plt.show()
 
 imgRows, imgCols, _ = image1.shape
 objects = np.unique(labelImage)
@@ -64,6 +84,13 @@ for a in range(1, numObjects+1):
     if len(objectRows) and len(objectCols) > objectSizeThres:
         tempImage = np.isin(labelImage, a).astype(np.uint8)
         objectList.append(tempImage)
+
+# generate list of areas of each object for use in computing coin size ratios
+objectAreas = [np.count_nonzero(objectList[i]) for i in range(len(objectList))]
+
+# generate a list of object area pairs and compute ratios for each pair
+objectCombos = list(combinations(objectAreas, 2))
+objectRatios = [objectCombos[j][0] / objectCombos[j][1] for j in range(len(objectCombos))]
 
 # for a in range(1, numObjects):
 #     objectCoord = np.where(labelImage == a)
