@@ -29,7 +29,7 @@ coinRatios = {
 }
 
 # read in images
-image1 = cv2.imread('testcoins.jpg')
+image1 = cv2.imread('TestingImages/testcoins.jpg')
 image2 = cv2.imread('pennies.jpg')
 image3 = cv2.imread('quarters.png')
 image4 = cv2.imread('nickels.png')
@@ -145,15 +145,19 @@ for a in range(1, numObjects+1):
 extractedObjects1 = [cv2.bitwise_and(image1, image1, mask=(255*objectList1[k])) for k in range(len(objectList1))]
 extractedObjects2 = [cv2.bitwise_and(image2, image2, mask=(255*objectList2[k])) for k in range(len(objectList2))]
 
+SE = disk(10)
+coinMask1 = cv2.erode(objectList1[2], SE)
+coinMask2 = cv2.erode(objectList2[2], SE)
+
 # Do feature extraction on object from first image
 brisk = cv2.BRISK_create()
 gray = cv2.cvtColor(extractedObjects1[2], cv2.COLOR_RGB2GRAY)
-(kps, descs) = brisk.detectAndCompute(gray, None)
+(kps, descs) = brisk.detectAndCompute(gray, mask=coinMask1)
 
 # match features of object in first image to features in each object from second image, and display
 for l in range(len(extractedObjects2)):
     gray2 = cv2.cvtColor(extractedObjects2[l], cv2.COLOR_RGB2GRAY)
-    (kps2, descs2) = brisk.detectAndCompute(gray2, None)
+    (kps2, descs2) = brisk.detectAndCompute(gray2, mask=coinMask2)
 
     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     matches = bf.match(descs, descs2)
