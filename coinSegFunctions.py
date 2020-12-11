@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-from skimage.filters import threshold_otsu as Otsu
+from skimage.filters import threshold_otsu
 from skimage.morphology import disk
 from skimage.segmentation import clear_border
 from skimage.measure import label
@@ -12,10 +12,30 @@ def CoinSegmentation(imageName):
     image = cv2.imread(imageName)
     grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+    ########################################################################################################################
+    # # Testing Circular Hough Transform
+    # print("performing circular Hough transform...")
+    # circles = cv2.HoughCircles(grayImage, cv2.HOUGH_GRADIENT, 1, 20, param1=20, param2=10, minRadius=0, maxRadius=45)
+    # circles = np.uint16(np.around(circles))
+    # print("circular Hough transform complete...")
+    #
+    # for pt in circles[0, :]:
+    #     a, b, r = pt[0], pt[1], pt[2]
+    #
+    #     # Draw the circumference of the circle.
+    #     cv2.circle(image, (a, b), r, (0, 255, 0), 2)
+    #
+    #     # Draw a small circle (of radius 1) to show the center.
+    #     cv2.circle(image, (a, b), 1, (0, 0, 255), 3)
+    #     cv2.imshow("Detected Circle", image)
+    #     cv2.waitKey(0)
+########################################################################################################################
     # Otsu Thresholding
-    thresh = Otsu(grayImage)
+    thresh = threshold_otsu(grayImage)
     binary = np.uint8(grayImage > thresh)
     binaryNot = np.uint8(cv2.bitwise_not(binary))
+
+########################################################################################################################
 
     # Morphological filtering
     structElement = disk(radius=30)
@@ -25,6 +45,7 @@ def CoinSegmentation(imageName):
     cleared = clear_border(closedBinaryImage)
 
     # label image regions
+    # labelImage = label(closedBinaryImage)
     labelImage = label(cleared)
 
     imgRows, imgCols, _ = image.shape
