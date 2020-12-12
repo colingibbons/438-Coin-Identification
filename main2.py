@@ -9,6 +9,9 @@ import coinSegFunctions as coins
 # debugging toggle
 debug = False
 
+# Hough method toggle
+Hough = True
+
 # initializing training set
 trainPath = 'TrainingImages/'
 trainNames = os.listdir(trainPath)
@@ -31,47 +34,53 @@ penniesList = []
 for a in range(len(pennies)):
     b = pennies[a]
     imagePath = trainPath + trainNames[b]
-    penniesFromImage = coins.CoinSegmentation(imagePath)
+    penniesFromImage = coins.CoinSegmentation(imagePath, Hough)
     penniesList += penniesFromImage
 
 nickelsList = []
 for a in range(len(nickels)):
     b = nickels[a]
     imagePath = trainPath + trainNames[b]
-    nickelsFromImage = coins.CoinSegmentation(imagePath)
+    nickelsFromImage = coins.CoinSegmentation(imagePath, Hough)
     nickelsList += nickelsFromImage
 
 quartersList = []
 for a in range(len(quarters)):
     b = quarters[a]
     imagePath = trainPath + trainNames[b]
-    quartersFromImage = coins.CoinSegmentation(imagePath)
+    quartersFromImage = coins.CoinSegmentation(imagePath, Hough)
     quartersList += quartersFromImage
 
 dimesList = []
 for a in range(len(dimes)):
     b = dimes[a]
     imagePath = trainPath + trainNames[b]
-    dimesFromImage = coins.CoinSegmentation(imagePath)
+    dimesFromImage = coins.CoinSegmentation(imagePath, Hough)
     dimesList += dimesFromImage
 
 ########################################################################################################################
 if debug:
     for a in range(len(penniesList)):
         cv2.namedWindow("Individual Segmentations", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Individual Segmentations", 1000, 700)
+        cv2.resizeWindow("Individual Segmentations", 700, 1000)
         cv2.imshow("Individual Segmentations", penniesList[a])
         cv2.waitKey(0)
 
     for a in range(len(nickelsList)):
         cv2.namedWindow("Individual Segmentations", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Individual Segmentations", 1000, 700)
+        cv2.resizeWindow("Individual Segmentations", 700, 1000)
         cv2.imshow("Individual Segmentations", nickelsList[a])
+        cv2.waitKey(0)
+
+    for a in range(len(dimesList)):
+        cv2.namedWindow("Individual Segmentations", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Individual Segmentations", 700, 1000)
+        cv2.imshow("Individual Segmentations", dimesList[a])
         cv2.waitKey(0)
 
     for a in range(len(quartersList)):
         cv2.namedWindow("Individual Segmentations", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Individual Segmentations", 1000, 700)
+        cv2.resizeWindow("Individual Segmentations", 700, 1000)
         cv2.imshow("Individual Segmentations", quartersList[a])
         cv2.waitKey(0)
 
@@ -107,8 +116,9 @@ testNames = os.listdir(testPath)
 testCoinsList = []
 for i in testNames:
     imagePath = testPath + i
-    testCoinsFromImage = coins.CoinSegmentation(imagePath)
-    testCoinsList += testCoinsFromImage
+    testCoinsFromImage = coins.CoinSegmentation(imagePath, Hough)
+    if testCoinsFromImage:
+        testCoinsList += testCoinsFromImage
 
 # make predictions for each coin in the test set
 prediction = coins.Testing(testCoinsList, clf_svm)

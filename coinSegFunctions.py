@@ -1,6 +1,10 @@
 import cv2
 import numpy as np
 
+from skimage import filters
+from skimage import io
+import matplotlib.pyplot as plt
+from skimage.draw import circle
 from skimage.filters import threshold_otsu
 from skimage.morphology import disk
 from skimage.segmentation import clear_border
@@ -8,32 +12,50 @@ from skimage.measure import label
 from skimage.morphology import closing
 import mahotas as mt
 
-def CoinSegmentation(imageName):
+def CoinSegmentation(imageName, Hough):
     image = cv2.imread(imageName)
     grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
+    grayImage = cv2.medianBlur(grayImage, 25)
     ########################################################################################################################
-    # # Testing Circular Hough Transform
-    # print("performing circular Hough transform...")
-    # circles = cv2.HoughCircles(grayImage, cv2.HOUGH_GRADIENT, 1, 20, param1=20, param2=10, minRadius=0, maxRadius=45)
-    # circles = np.uint16(np.around(circles))
-    # print("circular Hough transform complete...")
-    #
-    # for pt in circles[0, :]:
-    #     a, b, r = pt[0], pt[1], pt[2]
-    #
-    #     # Draw the circumference of the circle.
-    #     cv2.circle(image, (a, b), r, (0, 255, 0), 2)
-    #
-    #     # Draw a small circle (of radius 1) to show the center.
-    #     cv2.circle(image, (a, b), 1, (0, 0, 255), 3)
-    #     cv2.imshow("Detected Circle", image)
-    #     cv2.waitKey(0)
+
+    if Hough:
+        # Testing Circular Hough Transform
+        print("performing circular Hough transform...")
+        circles = cv2.HoughCircles(grayImage, cv2.HOUGH_GRADIENT, 1, 120, param1=60, param2=30, minRadius=20, maxRadius=45)
+        if circles is None:
+            return None
+        circles = np.uint16(np.around(circles))
+        print("circular Hough transform complete...")
+
+        coinList = []
+        for pt in circles[0, :]:
+            a, b, r = pt[0], pt[1], pt[2]
+
+            rr, cc = circle(a, b, r)
+            circleMask = np.zeros(image.shape)
+            circleMask[cc, rr] = 255
+            circleMask = np.uint8(circleMask)
+            coinList.append(image & circleMask)
+
+            # Draw the circumference of the circle.
+            # cv2.circle(image, (a, b), r, (0, 255, 0), 2)
+            #
+            # # Draw a small circle (of radius 1) to show the center.
+            # cv2.circle(image, (a, b), 1, (0, 0, 255), 3)
+            # cv2.namedWindow("Detected Circle", cv2.WINDOW_NORMAL)
+            # cv2.resizeWindow("Detected Circle", 600, 800)
+            # cv2.imshow("Detected Circle", image)
+            # cv2.waitKey(0)
+        return coinList
 ########################################################################################################################
     # Otsu Thresholding
     thresh = threshold_otsu(grayImage)
     binary = np.uint8(grayImage > thresh)
+    #edges = filters.prewitt(binary)
     binaryNot = np.uint8(cv2.bitwise_not(binary))
+
+    # io.imshow(binaryNot)
+    # plt.show()
 
 ########################################################################################################################
 
