@@ -4,6 +4,7 @@ import numpy as np
 from skimage import filters
 from skimage import io
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 from skimage.draw import circle
 from skimage.filters import threshold_otsu
 from skimage.morphology import disk

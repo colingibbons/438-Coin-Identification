@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import os
 from sklearn.svm import LinearSVC
+from sklearn.model_selection import LeaveOneOut
 
 # import segmentation functions housed in separate file
 import coinSegFunctions as coins
@@ -98,6 +99,29 @@ trainingFeatures, trainingLabels = coins.Training(quartersList, 'quarter', train
 print("Training features: {}".format(np.array(trainingFeatures).shape))
 print("Training labels: {}".format(np.array(trainingLabels).shape))
 
+
+# Try Leave One Out method on the training set and
+correct = 0
+for test_idx in range(len(trainingFeatures)):
+    # create new instance of classifier
+    clf_svm = LinearSVC(random_state=9, dual=False)
+    # copy training features and labels
+    newTraining = trainingFeatures.copy()
+    newLabels = trainingLabels.copy()
+    # remove the test sample from each list
+    newTraining.pop(test_idx)
+    newLabels.pop(test_idx)
+    # fit the model using the remaining samples
+    clf_svm.fit(newTraining, newLabels)
+    # make a prediction, compare it to the actual label, and increment the counter if there's a match
+    prediction = clf_svm.predict(trainingFeatures[test_idx].reshape(1, -1))[0]
+    if prediction == trainingLabels[test_idx]:
+        correct += 1
+
+# print result of Leave One Out test
+percent = 100 * (correct / len(trainingFeatures))
+print("This model correctly predicted {}% of the samples".format(percent))
+
 # create the classifier
 print("[STATUS] Creating the classifier..")
 clf_svm = LinearSVC(random_state=9, dual=False)
@@ -116,7 +140,7 @@ testNames = os.listdir(testPath)
 testCoinsList = []
 for i in testNames:
     imagePath = testPath + i
-    testCoinsFromImage = coins.CoinSegmentation(imagePath, Hough)
+    testCoinsFromImage = coins.CoinSegmentation(imagePath, False)
     if testCoinsFromImage:
         testCoinsList += testCoinsFromImage
 
