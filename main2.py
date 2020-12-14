@@ -1,8 +1,13 @@
 import cv2
 import numpy as np
 import os
-from sklearn.svm import LinearSVC
-from sklearn.model_selection import LeaveOneOut
+from sklearn.svm import LinearSVC, SVC
+from sklearn.neural_network import MLPClassifier
+from sklearn import preprocessing
+import pandas
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.neighbors import KNeighborsClassifier
 
 # import segmentation functions housed in separate file
 import coinSegFunctions as coins
@@ -13,8 +18,11 @@ debug = False
 # Hough method toggle
 Hough = True
 
+# Classifier Type
+classifierType = 'K Nearest Neighbor'
+
 # initializing training set
-trainPath = 'TrainingImages/'
+trainPath = 'TrainingImages2/'
 trainNames = os.listdir(trainPath)
 
 # initializing feature vectors and training labels
@@ -95,21 +103,25 @@ trainingFeatures, trainingLabels = coins.Training(nickelsList, 'nickel', trainin
 trainingFeatures, trainingLabels = coins.Training(dimesList, 'dime', trainingFeatures, trainingLabels)
 trainingFeatures, trainingLabels = coins.Training(quartersList, 'quarter', trainingFeatures, trainingLabels)
 
-# have a look at the size of our feature vector and labels
-print("Training features: {}".format(np.array(trainingFeatures).shape))
-print("Training labels: {}".format(np.array(trainingLabels).shape))
+# # data preprocessing
+# trainingFeatures = preprocessing.normalize(trainingFeatures)
 
+# have a look at the size of our feature vector and labels
+print("Training features: {}".format(np.array(trainingFeatures).shape[1]))
+print("Training labels: {}".format(np.array(trainingLabels).shape[0]))
 
 # Try Leave One Out method on the training set and
 correct = 0
 for test_idx in range(len(trainingFeatures)):
     # create new instance of classifier
-    clf_svm = LinearSVC(random_state=9, dual=False)
+    clf_svm = LinearSVC(random_state=13, dual=False)
     # copy training features and labels
     newTraining = trainingFeatures.copy()
     newLabels = trainingLabels.copy()
     # remove the test sample from each list
-    newTraining.pop(test_idx)
+    newTraining = pandas.DataFrame(newTraining)
+    newTraining = newTraining.drop(newTraining.index[test_idx])
+    # newTraining.pop(test_idx)
     newLabels.pop(test_idx)
     # fit the model using the remaining samples
     clf_svm.fit(newTraining, newLabels)
@@ -122,29 +134,67 @@ for test_idx in range(len(trainingFeatures)):
 percent = 100 * (correct / len(trainingFeatures))
 print("This model correctly predicted {}% of the samples".format(percent))
 
-# create the classifier
-print("[STATUS] Creating the classifier..")
-clf_svm = LinearSVC(random_state=9, dual=False)
+#TODO (if needed) Keep adding classsifiers from
+# https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html#sphx-glr-auto-examples-classification-plot-classifier-comparison-py
 
-# fit the training data and labels
+#TODO this scaler addition is recommened but gives bad results after implenting
+scaler = StandardScaler()
+train_data = scaler.fit_transform(trainingFeatures)
+print("[STATUS] Creating the classifier..")
+
+if classifierType == 'SVC':
+    # SVC classifier
+    scaler = StandardScaler()
+    train_data = scaler.fit_transform(trainingFeatures)
+    classifier = SVC(C=1, cache_size=200, class_weight='balanced', coef0=0.0,
+      decision_function_shape='ovr', degree=3, gamma='auto', kernel='rbf',
+      max_iter=-1, probability=False, random_state=None, shrinking=True,
+      tol=0.001, verbose=False)
+elif classifierType == 'Linear SVC':
+    # Linear SVC classifier
+    scaler = StandardScaler()
+    train_data = scaler.fit_transform(trainingFeatures)
+    classifier = LinearSVC(random_state=13, dual=False)
+elif classifierType == 'Neural Network':
+    # Neural Network
+    PCT = PCA(n_components=13)
+    PCT.fit(trainingFeatures)
+    trainingFeatures = PCT.singular_values_
+    classifier = MLPClassifier(learning_rate='adaptive',  max_iter=1000)
+elif classifierType == 'K Nearest Neighbor':
+    # Kth nearest neighbor
+    classifier = KNeighborsClassifier(10)
+
+
+# fit classifier with training data
 print("[STATUS] Fitting data/label to model..")
-clf_svm.fit(trainingFeatures, trainingLabels)
+classifier = classifier.fit(trainingFeatures, trainingLabels)
+
+
+# # create the classifier
+# print("[STATUS] Creating the classifier..")
+# clf_svm = LinearSVC(random_state=13, dual=False)
+#
+# # fit the training data and labels
+# print("[STATUS] Fitting data/label to model..")
+# clf_svm.fit(trainingFeatures, trainingLabels)
 
 ########################################################################################################################
 
 # get test images from file
-testPath = 'TestingImages/'
+testPath = 'TestingImages2/'
 testNames = os.listdir(testPath)
 
 # loop through test images, detect coins, and add them to a list
 testCoinsList = []
 for i in testNames:
     imagePath = testPath + i
-    testCoinsFromImage = coins.CoinSegmentation(imagePath, False)
+    testCoinsFromImage = coins.CoinSegmentation(imagePath, Hough)
     if testCoinsFromImage:
         testCoinsList += testCoinsFromImage
 
 # make predictions for each coin in the test set
-prediction = coins.Testing(testCoinsList, clf_svm)
+prediction = coins.Testing(testCoinsList, classifier)
+#prediction = coins.Testing(testCoinsList, clf_svm)
 
 
