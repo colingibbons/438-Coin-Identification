@@ -12,6 +12,7 @@ from skimage.segmentation import clear_border
 from skimage.measure import label
 from skimage.morphology import closing
 import mahotas as mt
+from mahotas.features import surf
 
 def CoinSegmentation(imageName, Hough):
     image = cv2.imread(imageName)
@@ -22,7 +23,12 @@ def CoinSegmentation(imageName, Hough):
     if Hough:
         # Testing Circular Hough Transform
         print("performing circular Hough transform...")
-        circles = cv2.HoughCircles(grayImage, cv2.HOUGH_GRADIENT, 1, 120, param1=60, param2=30, minRadius=20, maxRadius=45)
+        #circles = cv2.HoughCircles(grayImage, cv2.HOUGH_GRADIENT, 1, 120, param1=60, param2=30, minRadius=20,
+        #                           maxRadius=45)
+        #circles = cv2.HoughCircles(grayImage, cv2.HOUGH_GRADIENT, 1, 120, param1=60, param2=40, minRadius=75,
+        #                           maxRadius=200)  # for trainingImages2
+        circles = cv2.HoughCircles(grayImage, cv2.HOUGH_GRADIENT, 1, 200, param1=50, param2=20, minRadius=200,
+                                   maxRadius=350)
         if circles is None:
             return None
         circles = np.uint16(np.around(circles))
@@ -32,21 +38,23 @@ def CoinSegmentation(imageName, Hough):
         for pt in circles[0, :]:
             a, b, r = pt[0], pt[1], pt[2]
 
+            # create a mask to extract coin from original image
             rr, cc = circle(a, b, r)
             circleMask = np.zeros(image.shape)
             circleMask[cc, rr] = 255
             circleMask = np.uint8(circleMask)
             coinList.append(image & circleMask)
 
-            # Draw the circumference of the circle.
+            # # Draw the circumference of the circle.
             # cv2.circle(image, (a, b), r, (0, 255, 0), 2)
             #
             # # Draw a small circle (of radius 1) to show the center.
             # cv2.circle(image, (a, b), 1, (0, 0, 255), 3)
             # cv2.namedWindow("Detected Circle", cv2.WINDOW_NORMAL)
-            # cv2.resizeWindow("Detected Circle", 600, 800)
+            # cv2.resizeWindow("Detected Circle", 800, 600)
             # cv2.imshow("Detected Circle", image)
             # cv2.waitKey(0)
+
         return coinList
 ########################################################################################################################
     # Otsu Thresholding
@@ -91,12 +99,24 @@ def CoinSegmentation(imageName, Hough):
 
 # function to extract Haralick textures from an image
 def extract_features(image):
-    # calculate haralick texture features for 4 types of adjacency
-    textures = mt.features.haralick(image)
+    # # calculate haralick texture features for 4 types of adjacency
+    # textures = mt.features.haralick(image)
+    #
+    # # take the mean of each of the four gray-level co-occurrence matrices and return the result
+    # ht_mean = textures.mean(axis=0)
+    # return ht_mean
 
-    # take the mean of each of the four gray-level co-occurrence matrices and return the result
-    ht_mean = textures.mean(axis=0)
-    return ht_mean
+    # Use SURF algorithm to calculate texture features
+    # spoints = surf.surf(image)
+    # s_mean = spoints.mean(axis=0)
+    #return s_mean
+
+    lpoints = mt.features.lbp(image, radius=10, points=6)
+
+    return lpoints
+    # combined_mean = np.concatenate((ht_mean, s_mean))
+
+
 
 
 # function to run through segmented coin list
@@ -140,6 +160,8 @@ def Testing(inputImage, clf_svm):
         coinPrediction.append(prediction)
 
         # display the output image
+        cv2.namedWindow("Test Image")
+        cv2.resizeWindow("Test Image", 700, 1000)
         cv2.imshow("Test Image", image)
         cv2.waitKey(0)
 

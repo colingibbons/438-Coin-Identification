@@ -19,10 +19,11 @@ debug = False
 Hough = True
 
 # Classifier Type
-classifierType = 'K Nearest Neighbor'
+classifierType = 'Linear SVC'
+
 
 # initializing training set
-trainPath = 'TrainingImages2/'
+trainPath = 'TrainingImages3/'
 trainNames = os.listdir(trainPath)
 
 # initializing feature vectors and training labels
@@ -30,10 +31,10 @@ trainingFeatures = []
 trainingLabels = []
 
 # determining location of coin type in trainNames
-nickels = [2, 3]  # once more is included, should change to nickels = [0,1,2]
-pennies = [4, 5]  # pennies = [3,4,5]
-dimes = [0, 1]
-quarters = [6, 7]  # etc
+nickels = []  # once more is included, should change to nickels = [0,1,2]
+pennies = [3]  # pennies = [3,4,5]
+dimes = [1]
+quarters = []  # etc
 
 
 ########################################################################################################################
@@ -110,29 +111,37 @@ trainingFeatures, trainingLabels = coins.Training(quartersList, 'quarter', train
 print("Training features: {}".format(np.array(trainingFeatures).shape[1]))
 print("Training labels: {}".format(np.array(trainingLabels).shape[0]))
 
-# Try Leave One Out method on the training set and
-correct = 0
-for test_idx in range(len(trainingFeatures)):
-    # create new instance of classifier
-    clf_svm = LinearSVC(random_state=13, dual=False)
-    # copy training features and labels
-    newTraining = trainingFeatures.copy()
-    newLabels = trainingLabels.copy()
-    # remove the test sample from each list
-    newTraining = pandas.DataFrame(newTraining)
-    newTraining = newTraining.drop(newTraining.index[test_idx])
-    # newTraining.pop(test_idx)
-    newLabels.pop(test_idx)
-    # fit the model using the remaining samples
-    clf_svm.fit(newTraining, newLabels)
-    # make a prediction, compare it to the actual label, and increment the counter if there's a match
-    prediction = clf_svm.predict(trainingFeatures[test_idx].reshape(1, -1))[0]
-    if prediction == trainingLabels[test_idx]:
-        correct += 1
+# # Try Leave One Out method on the training set and
+# correct = 0
+# for test_idx in range(len(trainingFeatures)):
+#     # create new instance of classifier
+#     #clf_svm = LinearSVC(random_state=13, dual=False)
+#     # copy training features and labels
+#     newTraining = trainingFeatures.copy()
+#     newLabels = trainingLabels.copy()
+#     # remove the test sample from each list
+#     newTraining = pandas.DataFrame(newTraining)
+#     newTraining = newTraining.drop(newTraining.index[test_idx])
+#     # newTraining.pop(test_idx)
+#     newLabels.pop(test_idx)
+#     scaler = StandardScaler()
+#     train_data = scaler.fit_transform(newTraining)
+#     classifier = SVC(C=10, cache_size=200, class_weight='balanced', coef0=0.0,
+#       decision_function_shape='ovr', degree=3, gamma='auto', kernel='rbf',
+#       max_iter=100, probability=False, random_state=14, shrinking=True,
+#       tol=0.001, verbose=False)
+#     classifier.fit(newTraining, newLabels)
+#     # fit the model using the remaining samples
+#     #clf_svm.fit(newTraining, newLabels)
+#     # make a prediction, compare it to the actual label, and increment the counter if there's a match
+#     prediction = classifier.predict(trainingFeatures[test_idx].reshape(1, -1))
+#     #prediction = clf_svm.predict(trainingFeatures[test_idx].reshape(1, -1))[0]
+#     if prediction == trainingLabels[test_idx]:
+#         correct += 1
 
-# print result of Leave One Out test
-percent = 100 * (correct / len(trainingFeatures))
-print("This model correctly predicted {}% of the samples".format(percent))
+# # print result of Leave One Out test
+# percent = 100 * (correct / len(trainingFeatures))
+# print("This model correctly predicted {}% of the samples".format(percent))
 
 #TODO (if needed) Keep adding classsifiers from
 # https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html#sphx-glr-auto-examples-classification-plot-classifier-comparison-py
@@ -182,7 +191,7 @@ classifier = classifier.fit(trainingFeatures, trainingLabels)
 ########################################################################################################################
 
 # get test images from file
-testPath = 'TestingImages2/'
+testPath = 'TestingImages3/'
 testNames = os.listdir(testPath)
 
 # loop through test images, detect coins, and add them to a list
