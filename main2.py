@@ -6,6 +6,10 @@ from sklearn.svm import LinearSVC, SVC
 from sklearn.neural_network import MLPClassifier
 from sklearn import preprocessing
 import pandas
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.neighbors import KNeighborsClassifier
@@ -23,7 +27,7 @@ Hough = True
 shape = True
 
 # Classifier Type
-classifierType = 'Linear SVC'
+classifierType = 'QDA'
 
 # initializing correct coin string
 d = 'dime'
@@ -83,8 +87,9 @@ for a in range(len(quarters)):
     quartersList += quartersFromImage
     quarterShapes += shapeFeatures
 
-    # remove last two false segmentations
-    quartersList = quartersList[:-2]
+# remove last two false segmentations
+quartersList = quartersList[:36]
+quarterShapes = quarterShapes[:36]
 
 dimesList = []
 dimeShapes = []
@@ -142,29 +147,26 @@ if debug:
 print('\n')
 print('[STATUS] Started extracting Haralick textures..')
 successRate = []
-# # initializing feature vectors and training labels
-# trainingFeatures = []
-# trainingLabels = []
 
 # begin texture feature extraction for each object list
 # penny extraction & shape Features addition
 print("penny feature extractions in progress...")
-pennyFeatures, pennyLabels = coins.Training(penniesList, 'penny', reduceFeatures = 10)
+pennyFeatures, pennyLabels = coins.Training(penniesList, 'penny', reduceFeatures=9)
 pennyFeatures = [np.insert(pennyFeatures[a], 0, pennyShapes[a]) for a in range(len(pennyFeatures))]
 
 # nickel extraction & shape Features addition
 print("nickel feature extractions in progress...")
-nickelFeatures, nickelLabels = coins.Training(nickelsList, 'nickel',  reduceFeatures = 10)
+nickelFeatures, nickelLabels = coins.Training(nickelsList, 'nickel',  reduceFeatures=9)
 nickelFeatures = [np.insert(nickelFeatures[a], 0, nickelShapes[a]) for a in range(len(nickelFeatures))]
 
 # dime extraction & shape Features addition
 print("dime feature extractions in progress...")
-dimeFeatures, dimeLabels = coins.Training(dimesList, 'dime', reduceFeatures = 10)
+dimeFeatures, dimeLabels = coins.Training(dimesList, 'dime', reduceFeatures=9)
 dimeFeatures = [np.insert(dimeFeatures[a], 0, dimeShapes[a]) for a in range(len(dimeFeatures))]
 
 # quarter extraction & shape Features addition
 print("quarter feature extractions in progress...")
-quarterFeatures, quarterLabels = coins.Training(quartersList, 'quarter', reduceFeatures = 10)
+quarterFeatures, quarterLabels = coins.Training(quartersList, 'quarter', reduceFeatures=9)
 quarterFeatures = [np.insert(quarterFeatures[a], 0, quarterShapes[a]) for a in range(len(quarterFeatures))]
 
 # combining features and labels
@@ -183,40 +185,42 @@ trainingFeatures.extend(quarterFeatures), trainingLabels.extend(quarterLabels)
 # https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html#sphx-glr-auto-examples-classification-plot-classifier-comparison-py
 
 print("[STATUS] Creating the classifier..")
-classList = ['SVC', 'Linear SVC', 'Neural Network', 'K Nearest Neighbor']
-for x in classList:
-    classifierType = x
-    if classifierType == 'SVC':
-        # SVC classifier
-        # scaler = StandardScaler()
-        # train_data = scaler.fit_transform(trainingFeatures)
-        classifier = SVC(C=20)
-    elif classifierType == 'Linear SVC':
-        # Linear SVC classifier
-        # scaler = StandardScaler()
-        # train_data = scaler.fit_transform(trainingFeatures)
-        classifier = LinearSVC(random_state=12, dual=False, fit_intercept=False)
-    elif classifierType == 'Neural Network':
-        # Neural Network
-        PCT = PCA(n_components=13)
-        PCT.fit(trainingFeatures)
-        classifier = MLPClassifier(learning_rate='adaptive',  max_iter=1000)
-    elif classifierType == 'K Nearest Neighbor':
-        # Kth nearest neighbor
-        classifier = KNeighborsClassifier(10)
 
-    # fit classifier with training data
-    print("[STATUS] Fitting data/label to model..")
-    # classifier = classifier.fit(PCT.singular_values_ , trainingLabels)
-    # classifier = classifier.fit(train_data, trainingLabels)
-    classifier = classifier.fit(trainingFeatures, trainingLabels)
+if classifierType == 'SVC':
+    # SVC classifier
+    # scaler = StandardScaler()
+    # train_data = scaler.fit_transform(trainingFeatures)
+    classifier = SVC(C=.001, cache_size=200, class_weight='balanced', coef0=0.0,
+      decision_function_shape='ovr', degree=3, gamma='auto', kernel='linear',
+      max_iter=-1, probability=False, random_state=None, shrinking=True,
+      tol=0.001, verbose=False)
+elif classifierType == 'Linear SVC':
+    # Linear SVC classifier
+    # scaler = StandardScaler()
+    # train_data = scaler.fit_transform(trainingFeatures)
+    classifier = LinearSVC(C=0.001, dual=False, fit_intercept=True, max_iter=5000)
+elif classifierType == 'QDA':
+    # Neural Network
+    # PCT = PCA(n_components=12)
+    # PCT.fit(trainingFeatures)
+    # classifier = MLPClassifier(activation='logistic', max_iter=5000)
+    classifier = QuadraticDiscriminantAnalysis(reg_param=0.01)
+elif classifierType == 'K Nearest Neighbor':
+    # Kth nearest neighbor
+    classifier = KNeighborsClassifier(12)
+
+# fit classifier with training data
+print("[STATUS] Fitting data/label to model..")
+# classifier = classifier.fit(PCT.singular_values_ , trainingLabels)
+# classifier = classifier.fit(train_data, trainingLabels)
+classifier = classifier.fit(trainingFeatures, trainingLabels)
 
 
-    ########################################################################################################################
-    # make predictions for each coin in the test set
+########################################################################################################################
+# make predictions for each coin in the test set
 
-    prediction, success = coins.Testing(testCoinsList, classifier, validationCRTstring, testCoinsShapes,  plot=False, reduceFeatures=x)
-    successRate.append(success)
+prediction, success = coins.Testing(testCoinsList, classifier, validationCRTstring, testCoinsShapes,  plot=False, reduceFeatures=9)
+successRate.append(success)
 
 # minimumFeatures = np.min(featureSize)
 # for a in successRate:

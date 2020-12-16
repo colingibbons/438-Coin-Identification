@@ -124,23 +124,14 @@ def CoinSegmentation(imageName, Hough, plot):
 
 # function to extract Haralick textures from an image
 def extract_features(image):
-    # # calculate haralick texture features for 4 types of adjacency
-    textures = mt.features.haralick(image, ignore_zeros=True, distance=25)
+    # calculate haralick texture features for 4 types of adjacency
+    textures = mt.features.haralick(image, ignore_zeros=True, distance=27)
 
     # take the mean of each of the four gray-level co-occurrence matrices and return the result
     ht_mean = textures.mean(axis=0)
 
     return ht_mean
 
-    # Use SURF algorithm to calculate texture features
-    # spoints = surf.surf(image)
-    # s_mean = spoints.mean(axis=0)
-    #return s_mean
-    #
-    # lpoints = mt.features.lbp(image, radius=10, points=6)
-    #
-    # return lpoints
-    # combined_mean = np.concatenate((ht_mean, s_mean))
 
 
 # function to run through segmented coin list
