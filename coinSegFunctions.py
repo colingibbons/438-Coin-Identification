@@ -22,22 +22,10 @@ def CoinSegmentation(imageName, Hough, plot):
     X, Y, _ = image.shape
     grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     grayImage = cv2.medianBlur(grayImage, 25)
-    # grayImage = np.uint8(255 * filters.edges.sobel(grayImage))
-    # thresh = threshold_otsu(grayImage)
-    # binary = 255 * np.uint8(grayImage > thresh)
-    # structElement = disk(radius=20)
-    # print("closing...")
-    # closedBinaryImage = np.uint8(ndimage.binary_closing(binary, structElement))
-    # print("closing operation complete...")
-    # cv2.namedWindow("Roberts", cv2.WINDOW_NORMAL)
-    # cv2.resizeWindow("Roberts", X, Y)
-    # cv2.imshow("Roberts", grayImage)
-    # cv2.waitKey(0)
-
+    maskList = []
 
     if Hough:
         # Testing Circular Hough Transform
-        # print("performing circular Hough transform...")
         # circles = cv2.HoughCircles(grayImage, cv2.HOUGH_GRADIENT, 1, 120, param1=60, param2=30, minRadius=20, maxRadius=45) # Hough settins for original images
         circles = cv2.HoughCircles(grayImage, cv2.HOUGH_GRADIENT, 1, 165, param1=50, param2=20, minRadius=150, maxRadius=350)   # Hough settings for new images
         if circles is None:
@@ -57,6 +45,9 @@ def CoinSegmentation(imageName, Hough, plot):
             allCircles[cc, rr] = 255
             circleMask = np.uint8(circleMask)
             coinList.append(image & circleMask)
+            grayCircleMask = cv2.cvtColor(circleMask, cv2.COLOR_BGR2GRAY)
+            maskList.append(grayCircleMask)
+
 
             if plot:
                 # Draw the circumference of the circle.
@@ -69,7 +60,7 @@ def CoinSegmentation(imageName, Hough, plot):
                 cv2.imshow("Detected Circle", image)
                 cv2.waitKey(0)
 
-        return coinList
+        return coinList, maskList
 ########################################################################################################################
     # Otsu Thresholding
     thresh = threshold_otsu(grayImage)
@@ -123,13 +114,20 @@ def CoinSegmentation(imageName, Hough, plot):
 
 
 # function to extract Haralick textures from an image
-def extract_features(image):
+def extract_features(image, shape, circleMask):
     # # calculate haralick texture features for 4 types of adjacency
     textures = mt.features.haralick(image, ignore_zeros=True, distance=2)
 
     # take the mean of each of the four gray-level co-occurrence matrices and return the result
     ht_mean = textures.mean(axis=0)
-    return ht_mean
+
+    if shape:
+        area = np.sum(circleMask / 255)
+        sobel = np.uint8(255 * filters.edges.sobel(circleMask))
+        sobel[sobel > 0] = 255
+        perimeter = np.sum(sobel / 255)
+
+    return ht_mean, area, perimeter
 
     # Use SURF algorithm to calculate texture features
     # spoints = surf.surf(image)
@@ -142,10 +140,8 @@ def extract_features(image):
     # combined_mean = np.concatenate((ht_mean, s_mean))
 
 
-
-
 # function to run through segmented coin list
-def Training(ImageList, objectName, trainingFeatures, trainingLabels, reduceFeatures):
+def Training(ImageList, objectName, trainingFeatures, trainingLabels, reduceFeatures, shape, masks):
     for i in range(len(ImageList)):
         # print("Processing Image - {} for {}".format(i + 1, objectName))
         # read the training image
@@ -153,12 +149,17 @@ def Training(ImageList, objectName, trainingFeatures, trainingLabels, reduceFeat
 
         # convert the image to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        mask = masks[i]
 
         # extract haralick texture from the image
-        features = extract_features(gray)
+        features, area, perimeter = extract_features(gray, shape, mask)
 
         if reduceFeatures is not None:
-            trainingFeatures.append(features[:reduceFeatures])
+            features = features[:reduceFeatures]
+
+        features = np.insert(features, 0, [area, perimeter])
+
+        trainingFeatures.append(features)
 
         # append the feature vector and label
         trainingLabels.append(objectName)
@@ -166,7 +167,7 @@ def Training(ImageList, objectName, trainingFeatures, trainingLabels, reduceFeat
     return trainingFeatures, trainingLabels
 
 
-def Testing(inputImage, clf_svm, correctString, plot, reduceFeatures):
+def Testing(inputImage, clf_svm, correctString, plot, reduceFeatures, shape, masks):
 
     coinPrediction = []
     count = 0
@@ -177,11 +178,15 @@ def Testing(inputImage, clf_svm, correctString, plot, reduceFeatures):
 
         # convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        mask = masks[a]
 
         # extract haralick texture from the image
-        features = extract_features(gray)
+        features, area, perimeter = extract_features(gray, shape, mask)
         if reduceFeatures is not None:
             features = features[:reduceFeatures]
+
+        features = np.insert(features, 0, [area, perimeter])
+
         # # data preprocessing
         # scaler = StandardScaler()
         # test_data = scaler.fit_transform(features)
@@ -207,6 +212,6 @@ def Testing(inputImage, clf_svm, correctString, plot, reduceFeatures):
             count += 1
 
     successRate = 100 * (count / len(inputImage))
-    # print("Success Rate: {} %".format(successRate))
+    print("Success Rate: {} %".format(successRate))
 
     return coinPrediction, successRate
