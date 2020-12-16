@@ -19,6 +19,9 @@ debug = False
 # Hough method toggle
 Hough = True
 
+# Shape features toggle
+shape = True
+
 # Classifier Type
 classifierType = 'Linear SVC'
 
@@ -30,6 +33,8 @@ p = 'penny'
 
 validationCRTstring = [q, d, p, q, q, q, d, p, q, p, n, p, d, q, n, n, n, p, d, q, p, p, d, d, q, d, q, n, q, n, p, q,
                        n, n, d, q, d, q, p, d, p, p, d, q, p, q, n, d, p, p, q, q, d, n, p, p, p, d, n, n, p, p, d, d]
+
+testCRTstring = []
 
 # initializing training set
 trainPath = 'TrainingImages3/'
@@ -52,49 +57,43 @@ print('\n')
 print("processing training image set...")
 
 penniesList = []
-pennyAreas = []
-pennyPerimeters = []
+pennyShapes = []
 for a in range(len(pennies)):
     b = pennies[a]
     imagePath = trainPath + trainNames[b]
-    penniesFromImage, areas, perimeters = coins.CoinSegmentation(imagePath, Hough, plot=False)
+    penniesFromImage, shapeFeatures = coins.CoinSegmentation(imagePath, Hough, plot=False)
     penniesList += penniesFromImage
-    pennyAreas += areas
-    pennyPerimeters += perimeters
+    pennyShapes += shapeFeatures
 
 nickelsList = []
-nickelAreas = []
-nickelPerimeters = []
+nickelShapes = []
 for a in range(len(nickels)):
     b = nickels[a]
     imagePath = trainPath + trainNames[b]
-    nickelsFromImage, areas, perimeters = coins.CoinSegmentation(imagePath, Hough, plot=False)
+    nickelsFromImage, shapeFeatures = coins.CoinSegmentation(imagePath, Hough, plot=False)
     nickelsList += nickelsFromImage
-    nickelAreas += areas
-    nickelPerimeters += perimeters
+    nickelShapes += shapeFeatures
 
 quartersList = []
-quarterAreas = []
-quarterPerimeters = []
+quarterShapes = []
 for a in range(len(quarters)):
     b = quarters[a]
     imagePath = trainPath + trainNames[b]
-    quartersFromImage, areas, perimeters = coins.CoinSegmentation(imagePath, Hough, plot=False)
+    quartersFromImage, shapeFeatures = coins.CoinSegmentation(imagePath, Hough, plot=False)
     quartersList += quartersFromImage
-    quarterAreas += areas
-    quarterPerimeters += perimeters
+    quarterShapes += shapeFeatures
+
+    # remove last two false segmentations
+    quartersList = quartersList[:-2]
 
 dimesList = []
-dimeAreas = []
-dimePerimeters = []
+dimeShapes = []
 for a in range(len(dimes)):
     b = dimes[a]
     imagePath = trainPath + trainNames[b]
-    dimesFromImage, areas, perimeters = coins.CoinSegmentation(imagePath, Hough, plot=False)
+    dimesFromImage, shapeFeatures = coins.CoinSegmentation(imagePath, Hough, plot=False)
     dimesList += dimesFromImage
-    dimeAreas += areas
-    dimePerimeters += perimeters
-
+    dimeShapes += shapeFeatures
 ########################################################################################################################
 print('\n')
 print("processing validation image set...")
@@ -104,15 +103,13 @@ testNames = os.listdir(testPath)
 
 # loop through test images, detect coins, and add them to a list
 testCoinsList = []
-testCoinsAreas = []
-testCoinsPerimeters = []
+testCoinsShapes = []
 for i in testNames:
     imagePath = testPath + i
-    testCoinsFromImage, areas, perimeters = coins.CoinSegmentation(imagePath, Hough, plot=False)
+    testCoinsFromImage, shapeFeatures = coins.CoinSegmentation(imagePath, Hough, plot=False)
     if testCoinsFromImage:
         testCoinsList += testCoinsFromImage
-        testCoinsAreas += areas
-        testCoinsPerimeters += perimeters
+        testCoinsShapes += shapeFeatures
 
 ########################################################################################################################
 if debug:
@@ -145,44 +142,60 @@ if debug:
 print('\n')
 print('[STATUS] Started extracting Haralick textures..')
 successRate = []
-featureSize = [10]
-for x in featureSize:
-    # initializing feature vectors and training labels
-    trainingFeatures = []
-    trainingLabels = []
-    # begin texture feature extraction for each object list
-    trainingFeatures, trainingLabels = coins.Training(penniesList, 'penny', trainingFeatures, trainingLabels,
-                                                      reduceFeatures=x, areas=pennyAreas, perimeters=pennyPerimeters)
-    trainingFeatures, trainingLabels = coins.Training(nickelsList, 'nickel', trainingFeatures, trainingLabels,
-                                                      reduceFeatures=x, areas=nickelAreas, perimeters=nickelPerimeters)
-    trainingFeatures, trainingLabels = coins.Training(dimesList, 'dime', trainingFeatures, trainingLabels,
-                                                      reduceFeatures=x, areas=dimeAreas, perimeters=dimePerimeters)
-    trainingFeatures, trainingLabels = coins.Training(quartersList, 'quarter', trainingFeatures, trainingLabels,
-                                                      reduceFeatures=x, areas=quarterAreas, perimeters=quarterPerimeters)
+# # initializing feature vectors and training labels
+# trainingFeatures = []
+# trainingLabels = []
 
+# begin texture feature extraction for each object list
+# penny extraction & shape Features addition
+print("penny feature extractions in progress...")
+pennyFeatures, pennyLabels = coins.Training(penniesList, 'penny', reduceFeatures = 10)
+pennyFeatures = [np.insert(pennyFeatures[a], 0, pennyShapes[a]) for a in range(len(pennyFeatures))]
 
-    # have a look at the size of our feature vector and labels
-    # print("Training features: {}".format(np.array(trainingFeatures).shape[1]))
-    # print("Training labels: {}".format(np.array(trainingLabels).shape[0]))
+# nickel extraction & shape Features addition
+print("nickel feature extractions in progress...")
+nickelFeatures, nickelLabels = coins.Training(nickelsList, 'nickel',  reduceFeatures = 10)
+nickelFeatures = [np.insert(nickelFeatures[a], 0, nickelShapes[a]) for a in range(len(nickelFeatures))]
 
-    #TODO (if needed) Keep adding classsifiers from
-    # https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html#sphx-glr-auto-examples-classification-plot-classifier-comparison-py
+# dime extraction & shape Features addition
+print("dime feature extractions in progress...")
+dimeFeatures, dimeLabels = coins.Training(dimesList, 'dime', reduceFeatures = 10)
+dimeFeatures = [np.insert(dimeFeatures[a], 0, dimeShapes[a]) for a in range(len(dimeFeatures))]
 
-    print("[STATUS] Creating the classifier..")
+# quarter extraction & shape Features addition
+print("quarter feature extractions in progress...")
+quarterFeatures, quarterLabels = coins.Training(quartersList, 'quarter', reduceFeatures = 10)
+quarterFeatures = [np.insert(quarterFeatures[a], 0, quarterShapes[a]) for a in range(len(quarterFeatures))]
 
+# combining features and labels
+trainingFeatures = []
+trainingLabels = []
+trainingFeatures.extend(pennyFeatures), trainingLabels.extend(pennyLabels)
+trainingFeatures.extend(nickelFeatures), trainingLabels.extend(nickelLabels)
+trainingFeatures.extend(dimeFeatures), trainingLabels.extend(dimeLabels)
+trainingFeatures.extend(quarterFeatures), trainingLabels.extend(quarterLabels)
+
+# have a look at the size of our feature vector and labels
+# print("Training features: {}".format(np.array(trainingFeatures).shape[1]))
+# print("Training labels: {}".format(np.array(trainingLabels).shape[0]))
+
+#TODO (if needed) Keep adding classsifiers from
+# https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html#sphx-glr-auto-examples-classification-plot-classifier-comparison-py
+
+print("[STATUS] Creating the classifier..")
+classList = ['SVC', 'Linear SVC', 'Neural Network', 'K Nearest Neighbor']
+for x in classList:
+    classifierType = x
     if classifierType == 'SVC':
         # SVC classifier
         # scaler = StandardScaler()
         # train_data = scaler.fit_transform(trainingFeatures)
-        classifier = SVC(C=1, cache_size=200, class_weight='balanced', coef0=0.0,
-          decision_function_shape='ovr', degree=3, gamma='auto', kernel='rbf',
-          max_iter=-1, probability=False, random_state=None, shrinking=True,
-          tol=0.001, verbose=False)
+        classifier = SVC(C=20)
     elif classifierType == 'Linear SVC':
         # Linear SVC classifier
         # scaler = StandardScaler()
         # train_data = scaler.fit_transform(trainingFeatures)
-        classifier = LinearSVC(random_state=13, dual=False, fit_intercept=True)
+        classifier = LinearSVC(random_state=12, dual=False, fit_intercept=False)
     elif classifierType == 'Neural Network':
         # Neural Network
         PCT = PCA(n_components=13)
@@ -190,7 +203,7 @@ for x in featureSize:
         classifier = MLPClassifier(learning_rate='adaptive',  max_iter=1000)
     elif classifierType == 'K Nearest Neighbor':
         # Kth nearest neighbor
-        classifier = KNeighborsClassifier(12)
+        classifier = KNeighborsClassifier(10)
 
     # fit classifier with training data
     print("[STATUS] Fitting data/label to model..")
@@ -202,13 +215,12 @@ for x in featureSize:
     ########################################################################################################################
     # make predictions for each coin in the test set
 
-    prediction, success = coins.Testing(testCoinsList, classifier, validationCRTstring, plot=False, reduceFeatures=x,
-                                        areas=testCoinsAreas, perimeters=testCoinsPerimeters)
+    prediction, success = coins.Testing(testCoinsList, classifier, validationCRTstring, testCoinsShapes,  plot=False, reduceFeatures=x)
     successRate.append(success)
 
-minimumFeatures = np.min(featureSize)
-for a in successRate:
-    print("Success Rate: {} % with {} features".format(a, 2))
-    minimumFeatures += 1
+# minimumFeatures = np.min(featureSize)
+# for a in successRate:
+#     print("Success Rate: {} % with {} features".format(a, minimumFeatures+2))
+#     minimumFeatures += 1
 
 

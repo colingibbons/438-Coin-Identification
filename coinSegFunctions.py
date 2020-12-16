@@ -33,26 +33,29 @@ def CoinSegmentation(imageName, Hough, plot):
         circles = np.uint16(np.around(circles))
         print("circular Hough transform complete...")
 
+        shapeFeatures = []
         coinList = []
-        areaList = []
-        perimeterList = []
         allCircles = np.zeros(image.shape, dtype=np.uint8)
         for pt in circles[0, :]:
             a, b, r = pt[0], pt[1], pt[2]
 
             # create a mask to extract coin from original image
-            rr, cc = circle(a, b, r)
-            circleMask = np.zeros(image.shape)
-            circleMask[cc, rr] = 255
-            allCircles[cc, rr] = 255
-            circleMask = np.uint8(circleMask)
-            area = len(rr)
-            perimeter = 2 * r * np.pi
-            areaList.append(area)
-            perimeterList.append(perimeter)
+            # rr, cc = circle(a, b, r)
+            circleMask = np.zeros(image.shape, dtype=np.uint8)
+            # circleMask[cc, rr] = 255
+            cv2.circle(circleMask, (a, b), r, (255, 255, 255), cv2.FILLED)
             coinList.append(image & circleMask)
+
+
             grayCircleMask = cv2.cvtColor(circleMask, cv2.COLOR_BGR2GRAY)
-            maskList.append(grayCircleMask)
+            area = np.sum(grayCircleMask/255)
+            grayCircleMask = np.zeros(image.shape[:2], dtype=np.uint8)
+            cv2.circle(grayCircleMask, (a, b), r, (255, 255, 255), 1)
+            perimeter = np.sum(grayCircleMask/255)
+
+
+            # maskList.append(grayCircleMask)
+            shapeFeatures.append([area, perimeter])
 
 
             if plot:
@@ -66,7 +69,7 @@ def CoinSegmentation(imageName, Hough, plot):
                 cv2.imshow("Detected Circle", image)
                 cv2.waitKey(0)
 
-        return coinList, areaList, perimeterList
+        return coinList, shapeFeatures
 ########################################################################################################################
     # Otsu Thresholding
     thresh = threshold_otsu(grayImage)
@@ -127,9 +130,6 @@ def extract_features(image):
     # take the mean of each of the four gray-level co-occurrence matrices and return the result
     ht_mean = textures.mean(axis=0)
 
-    #lpoints = mt.features.lbp(image, radius=10, points=6)
-
-    #return lpoints
     return ht_mean
 
     # Use SURF algorithm to calculate texture features
@@ -137,11 +137,17 @@ def extract_features(image):
     # s_mean = spoints.mean(axis=0)
     #return s_mean
     #
+    # lpoints = mt.features.lbp(image, radius=10, points=6)
+    #
+    # return lpoints
     # combined_mean = np.concatenate((ht_mean, s_mean))
 
 
 # function to run through segmented coin list
-def Training(ImageList, objectName, trainingFeatures, trainingLabels, reduceFeatures, areas, perimeters):
+def Training(ImageList, objectName, reduceFeatures):
+
+    trainingFeatures = []
+    trainingLabels = []
     for i in range(len(ImageList)):
         # print("Processing Image - {} for {}".format(i + 1, objectName))
         # read the training image
@@ -153,13 +159,10 @@ def Training(ImageList, objectName, trainingFeatures, trainingLabels, reduceFeat
         # extract haralick texture from the image
         features = extract_features(gray)
 
-        area = areas[i]
-        perimeter = perimeters[i]
         if reduceFeatures is not None:
             features = features[:reduceFeatures]
 
-        features = np.insert(features, 0, [area, perimeter])
-
+        # features = np.insert(features, 0, [area, perimeter])
         trainingFeatures.append(features)
 
         # append the feature vector and label
@@ -168,7 +171,7 @@ def Training(ImageList, objectName, trainingFeatures, trainingLabels, reduceFeat
     return trainingFeatures, trainingLabels
 
 
-def Testing(inputImage, clf_svm, correctString, plot, reduceFeatures, areas, perimeters):
+def Testing(inputImage, clf_svm, correctString, testCoinsShapes, plot, reduceFeatures):
 
     coinPrediction = []
     count = 0
@@ -176,8 +179,7 @@ def Testing(inputImage, clf_svm, correctString, plot, reduceFeatures, areas, per
         # read the input image
         image = inputImage[a]
         X, Y, _ = image.shape
-        area = areas[a]
-        perimeter = perimeters[a]
+
         # convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -186,7 +188,9 @@ def Testing(inputImage, clf_svm, correctString, plot, reduceFeatures, areas, per
         if reduceFeatures is not None:
             features = features[:reduceFeatures]
 
-        features = np.insert(features, 0, [area, perimeter])
+        #features = [np.insert(features[a], 0, testCoinsShapes[a]) for a in range(len(features))]
+
+        features = np.insert(features, 0, testCoinsShapes[a])
 
         # # data preprocessing
         # scaler = StandardScaler()
