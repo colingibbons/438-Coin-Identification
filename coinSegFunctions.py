@@ -34,6 +34,8 @@ def CoinSegmentation(imageName, Hough, plot):
         print("circular Hough transform complete...")
 
         coinList = []
+        areaList = []
+        perimeterList = []
         allCircles = np.zeros(image.shape, dtype=np.uint8)
         for pt in circles[0, :]:
             a, b, r = pt[0], pt[1], pt[2]
@@ -44,6 +46,10 @@ def CoinSegmentation(imageName, Hough, plot):
             circleMask[cc, rr] = 255
             allCircles[cc, rr] = 255
             circleMask = np.uint8(circleMask)
+            area = len(rr)
+            perimeter = 2 * r * np.pi
+            areaList.append(area)
+            perimeterList.append(perimeter)
             coinList.append(image & circleMask)
             grayCircleMask = cv2.cvtColor(circleMask, cv2.COLOR_BGR2GRAY)
             maskList.append(grayCircleMask)
@@ -60,7 +66,7 @@ def CoinSegmentation(imageName, Hough, plot):
                 cv2.imshow("Detected Circle", image)
                 cv2.waitKey(0)
 
-        return coinList, maskList
+        return coinList, areaList, perimeterList
 ########################################################################################################################
     # Otsu Thresholding
     thresh = threshold_otsu(grayImage)
@@ -114,34 +120,28 @@ def CoinSegmentation(imageName, Hough, plot):
 
 
 # function to extract Haralick textures from an image
-def extract_features(image, shape, circleMask):
+def extract_features(image):
     # # calculate haralick texture features for 4 types of adjacency
-    textures = mt.features.haralick(image, ignore_zeros=True, distance=2)
+    textures = mt.features.haralick(image, ignore_zeros=True, distance=25)
 
     # take the mean of each of the four gray-level co-occurrence matrices and return the result
     ht_mean = textures.mean(axis=0)
 
-    if shape:
-        area = np.sum(circleMask / 255)
-        sobel = np.uint8(255 * filters.edges.sobel(circleMask))
-        sobel[sobel > 0] = 255
-        perimeter = np.sum(sobel / 255)
+    #lpoints = mt.features.lbp(image, radius=10, points=6)
 
-    return ht_mean, area, perimeter
+    #return lpoints
+    return ht_mean
 
     # Use SURF algorithm to calculate texture features
     # spoints = surf.surf(image)
     # s_mean = spoints.mean(axis=0)
     #return s_mean
     #
-    # lpoints = mt.features.lbp(image, radius=10, points=6)
-    #
-    # return lpoints
     # combined_mean = np.concatenate((ht_mean, s_mean))
 
 
 # function to run through segmented coin list
-def Training(ImageList, objectName, trainingFeatures, trainingLabels, reduceFeatures, shape, masks):
+def Training(ImageList, objectName, trainingFeatures, trainingLabels, reduceFeatures, areas, perimeters):
     for i in range(len(ImageList)):
         # print("Processing Image - {} for {}".format(i + 1, objectName))
         # read the training image
@@ -149,11 +149,12 @@ def Training(ImageList, objectName, trainingFeatures, trainingLabels, reduceFeat
 
         # convert the image to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        mask = masks[i]
 
         # extract haralick texture from the image
-        features, area, perimeter = extract_features(gray, shape, mask)
+        features = extract_features(gray)
 
+        area = areas[i]
+        perimeter = perimeters[i]
         if reduceFeatures is not None:
             features = features[:reduceFeatures]
 
@@ -167,7 +168,7 @@ def Training(ImageList, objectName, trainingFeatures, trainingLabels, reduceFeat
     return trainingFeatures, trainingLabels
 
 
-def Testing(inputImage, clf_svm, correctString, plot, reduceFeatures, shape, masks):
+def Testing(inputImage, clf_svm, correctString, plot, reduceFeatures, areas, perimeters):
 
     coinPrediction = []
     count = 0
@@ -175,13 +176,13 @@ def Testing(inputImage, clf_svm, correctString, plot, reduceFeatures, shape, mas
         # read the input image
         image = inputImage[a]
         X, Y, _ = image.shape
-
+        area = areas[a]
+        perimeter = perimeters[a]
         # convert to grayscale
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        mask = masks[a]
 
         # extract haralick texture from the image
-        features, area, perimeter = extract_features(gray, shape, mask)
+        features = extract_features(gray)
         if reduceFeatures is not None:
             features = features[:reduceFeatures]
 

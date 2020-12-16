@@ -19,9 +19,6 @@ debug = False
 # Hough method toggle
 Hough = True
 
-# Shape features toggle
-shape = True
-
 # Classifier Type
 classifierType = 'Linear SVC'
 
@@ -55,40 +52,49 @@ print('\n')
 print("processing training image set...")
 
 penniesList = []
-pennyMasks = []
+pennyAreas = []
+pennyPerimeters = []
 for a in range(len(pennies)):
     b = pennies[a]
     imagePath = trainPath + trainNames[b]
-    penniesFromImage, masks = coins.CoinSegmentation(imagePath, Hough, plot=False)
+    penniesFromImage, areas, perimeters = coins.CoinSegmentation(imagePath, Hough, plot=False)
     penniesList += penniesFromImage
-    pennyMasks += masks
+    pennyAreas += areas
+    pennyPerimeters += perimeters
 
 nickelsList = []
-nickelMasks = []
+nickelAreas = []
+nickelPerimeters = []
 for a in range(len(nickels)):
     b = nickels[a]
     imagePath = trainPath + trainNames[b]
-    nickelsFromImage, masks = coins.CoinSegmentation(imagePath, Hough, plot=False)
+    nickelsFromImage, areas, perimeters = coins.CoinSegmentation(imagePath, Hough, plot=False)
     nickelsList += nickelsFromImage
-    nickelMasks += masks
+    nickelAreas += areas
+    nickelPerimeters += perimeters
 
 quartersList = []
-quarterMasks = []
+quarterAreas = []
+quarterPerimeters = []
 for a in range(len(quarters)):
     b = quarters[a]
     imagePath = trainPath + trainNames[b]
-    quartersFromImage, masks = coins.CoinSegmentation(imagePath, Hough, plot=False)
+    quartersFromImage, areas, perimeters = coins.CoinSegmentation(imagePath, Hough, plot=False)
     quartersList += quartersFromImage
-    quarterMasks += masks
+    quarterAreas += areas
+    quarterPerimeters += perimeters
 
 dimesList = []
-dimeMasks = []
+dimeAreas = []
+dimePerimeters = []
 for a in range(len(dimes)):
     b = dimes[a]
     imagePath = trainPath + trainNames[b]
-    dimesFromImage, masks = coins.CoinSegmentation(imagePath, Hough, plot=False)
+    dimesFromImage, areas, perimeters = coins.CoinSegmentation(imagePath, Hough, plot=False)
     dimesList += dimesFromImage
-    dimeMasks += masks
+    dimeAreas += areas
+    dimePerimeters += perimeters
+
 ########################################################################################################################
 print('\n')
 print("processing validation image set...")
@@ -98,13 +104,15 @@ testNames = os.listdir(testPath)
 
 # loop through test images, detect coins, and add them to a list
 testCoinsList = []
-testCoinsMasks = []
+testCoinsAreas = []
+testCoinsPerimeters = []
 for i in testNames:
     imagePath = testPath + i
-    testCoinsFromImage, masks = coins.CoinSegmentation(imagePath, Hough, plot=False)
+    testCoinsFromImage, areas, perimeters = coins.CoinSegmentation(imagePath, Hough, plot=False)
     if testCoinsFromImage:
         testCoinsList += testCoinsFromImage
-        testCoinsMasks += masks
+        testCoinsAreas += areas
+        testCoinsPerimeters += perimeters
 
 ########################################################################################################################
 if debug:
@@ -143,10 +151,14 @@ for x in featureSize:
     trainingFeatures = []
     trainingLabels = []
     # begin texture feature extraction for each object list
-    trainingFeatures, trainingLabels = coins.Training(penniesList, 'penny', trainingFeatures, trainingLabels, reduceFeatures = x, shape=shape, masks=pennyMasks)
-    trainingFeatures, trainingLabels = coins.Training(nickelsList, 'nickel', trainingFeatures, trainingLabels, reduceFeatures = x, shape=shape, masks=nickelMasks)
-    trainingFeatures, trainingLabels = coins.Training(dimesList, 'dime', trainingFeatures, trainingLabels, reduceFeatures = x, shape=shape, masks=dimeMasks)
-    trainingFeatures, trainingLabels = coins.Training(quartersList, 'quarter', trainingFeatures, trainingLabels, reduceFeatures = x, shape=shape, masks=quarterMasks)
+    trainingFeatures, trainingLabels = coins.Training(penniesList, 'penny', trainingFeatures, trainingLabels,
+                                                      reduceFeatures=x, areas=pennyAreas, perimeters=pennyPerimeters)
+    trainingFeatures, trainingLabels = coins.Training(nickelsList, 'nickel', trainingFeatures, trainingLabels,
+                                                      reduceFeatures=x, areas=nickelAreas, perimeters=nickelPerimeters)
+    trainingFeatures, trainingLabels = coins.Training(dimesList, 'dime', trainingFeatures, trainingLabels,
+                                                      reduceFeatures=x, areas=dimeAreas, perimeters=dimePerimeters)
+    trainingFeatures, trainingLabels = coins.Training(quartersList, 'quarter', trainingFeatures, trainingLabels,
+                                                      reduceFeatures=x, areas=quarterAreas, perimeters=quarterPerimeters)
 
 
     # have a look at the size of our feature vector and labels
@@ -170,7 +182,7 @@ for x in featureSize:
         # Linear SVC classifier
         # scaler = StandardScaler()
         # train_data = scaler.fit_transform(trainingFeatures)
-        classifier = LinearSVC(random_state=x, dual=False, fit_intercept=True)
+        classifier = LinearSVC(random_state=13, dual=False, fit_intercept=True)
     elif classifierType == 'Neural Network':
         # Neural Network
         PCT = PCA(n_components=13)
@@ -178,7 +190,7 @@ for x in featureSize:
         classifier = MLPClassifier(learning_rate='adaptive',  max_iter=1000)
     elif classifierType == 'K Nearest Neighbor':
         # Kth nearest neighbor
-        classifier = KNeighborsClassifier(10)
+        classifier = KNeighborsClassifier(12)
 
     # fit classifier with training data
     print("[STATUS] Fitting data/label to model..")
@@ -190,12 +202,13 @@ for x in featureSize:
     ########################################################################################################################
     # make predictions for each coin in the test set
 
-    prediction, success = coins.Testing(testCoinsList, classifier, validationCRTstring, plot=False, reduceFeatures=x, shape=shape, masks=testCoinsMasks)
+    prediction, success = coins.Testing(testCoinsList, classifier, validationCRTstring, plot=False, reduceFeatures=x,
+                                        areas=testCoinsAreas, perimeters=testCoinsPerimeters)
     successRate.append(success)
 
 minimumFeatures = np.min(featureSize)
 for a in successRate:
-    print("Success Rate: {} % with {} features".format(a, minimumFeatures+2))
+    print("Success Rate: {} % with {} features".format(a, 2))
     minimumFeatures += 1
 
 
