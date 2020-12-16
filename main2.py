@@ -21,6 +21,14 @@ Hough = True
 # Classifier Type
 classifierType = 'Linear SVC'
 
+# initializing correct coin string
+d = 'dime'
+q = 'quarter'
+n = 'nickel'
+p = 'penny'
+
+validationCRTstring = [q, d, p, q, q, q, d, p, q, p, n, p, d, q, n, n, n, p, d, q, p, p, d, d, q, d, q, n, q, n, p, q,
+                       n, n, d, q, d, q, p, d, p, p, d, q, p, q, n, d, p, p, q, q, d, n, p, p, p, d, n, n, p, p, d, d]
 
 # initializing training set
 trainPath = 'TrainingImages3/'
@@ -31,10 +39,10 @@ trainingFeatures = []
 trainingLabels = []
 
 # determining location of coin type in trainNames
-nickels = []  # once more is included, should change to nickels = [0,1,2]
-pennies = [3]  # pennies = [3,4,5]
-dimes = [1]
-quarters = []  # etc
+nickels = [4, 5, 6, 7]  # once more is included, should change to nickels = [0,1,2]
+pennies = [8, 9, 10, 11]  # pennies = [3,4,5]
+dimes = [0, 1, 2, 3]
+quarters = [12, 13, 14, 15]  # etc
 
 
 ########################################################################################################################
@@ -44,29 +52,42 @@ penniesList = []
 for a in range(len(pennies)):
     b = pennies[a]
     imagePath = trainPath + trainNames[b]
-    penniesFromImage = coins.CoinSegmentation(imagePath, Hough)
+    penniesFromImage = coins.CoinSegmentation(imagePath, Hough, plot=False)
     penniesList += penniesFromImage
 
 nickelsList = []
 for a in range(len(nickels)):
     b = nickels[a]
     imagePath = trainPath + trainNames[b]
-    nickelsFromImage = coins.CoinSegmentation(imagePath, Hough)
+    nickelsFromImage = coins.CoinSegmentation(imagePath, Hough, plot=False)
     nickelsList += nickelsFromImage
 
 quartersList = []
 for a in range(len(quarters)):
     b = quarters[a]
     imagePath = trainPath + trainNames[b]
-    quartersFromImage = coins.CoinSegmentation(imagePath, Hough)
+    quartersFromImage = coins.CoinSegmentation(imagePath, Hough, plot=False)
     quartersList += quartersFromImage
 
 dimesList = []
 for a in range(len(dimes)):
     b = dimes[a]
     imagePath = trainPath + trainNames[b]
-    dimesFromImage = coins.CoinSegmentation(imagePath, Hough)
+    dimesFromImage = coins.CoinSegmentation(imagePath, Hough, plot=False)
     dimesList += dimesFromImage
+########################################################################################################################
+
+# get test images from file
+testPath = 'ValidationSet/'
+testNames = os.listdir(testPath)
+
+# loop through test images, detect coins, and add them to a list
+testCoinsList = []
+for i in testNames:
+    imagePath = testPath + i
+    testCoinsFromImage = coins.CoinSegmentation(imagePath, Hough, plot=False)
+    if testCoinsFromImage:
+        testCoinsList += testCoinsFromImage
 
 ########################################################################################################################
 if debug:
@@ -97,113 +118,65 @@ if debug:
 ########################################################################################################################
 # loop over the training dataset
 print('[STATUS] Started extracting Haralick textures..')
-
-# begin texture feature extraction for each object list
-trainingFeatures, trainingLabels = coins.Training(penniesList, 'penny', trainingFeatures, trainingLabels)
-trainingFeatures, trainingLabels = coins.Training(nickelsList, 'nickel', trainingFeatures, trainingLabels)
-trainingFeatures, trainingLabels = coins.Training(dimesList, 'dime', trainingFeatures, trainingLabels)
-trainingFeatures, trainingLabels = coins.Training(quartersList, 'quarter', trainingFeatures, trainingLabels)
-
-# # data preprocessing
-# trainingFeatures = preprocessing.normalize(trainingFeatures)
-
-# have a look at the size of our feature vector and labels
-print("Training features: {}".format(np.array(trainingFeatures).shape[1]))
-print("Training labels: {}".format(np.array(trainingLabels).shape[0]))
-
-# # Try Leave One Out method on the training set and
-# correct = 0
-# for test_idx in range(len(trainingFeatures)):
-#     # create new instance of classifier
-#     #clf_svm = LinearSVC(random_state=13, dual=False)
-#     # copy training features and labels
-#     newTraining = trainingFeatures.copy()
-#     newLabels = trainingLabels.copy()
-#     # remove the test sample from each list
-#     newTraining = pandas.DataFrame(newTraining)
-#     newTraining = newTraining.drop(newTraining.index[test_idx])
-#     # newTraining.pop(test_idx)
-#     newLabels.pop(test_idx)
-#     scaler = StandardScaler()
-#     train_data = scaler.fit_transform(newTraining)
-#     classifier = SVC(C=10, cache_size=200, class_weight='balanced', coef0=0.0,
-#       decision_function_shape='ovr', degree=3, gamma='auto', kernel='rbf',
-#       max_iter=100, probability=False, random_state=14, shrinking=True,
-#       tol=0.001, verbose=False)
-#     classifier.fit(newTraining, newLabels)
-#     # fit the model using the remaining samples
-#     #clf_svm.fit(newTraining, newLabels)
-#     # make a prediction, compare it to the actual label, and increment the counter if there's a match
-#     prediction = classifier.predict(trainingFeatures[test_idx].reshape(1, -1))
-#     #prediction = clf_svm.predict(trainingFeatures[test_idx].reshape(1, -1))[0]
-#     if prediction == trainingLabels[test_idx]:
-#         correct += 1
-
-# # print result of Leave One Out test
-# percent = 100 * (correct / len(trainingFeatures))
-# print("This model correctly predicted {}% of the samples".format(percent))
-
-#TODO (if needed) Keep adding classsifiers from
-# https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html#sphx-glr-auto-examples-classification-plot-classifier-comparison-py
-
-#TODO this scaler addition is recommened but gives bad results after implenting
-scaler = StandardScaler()
-train_data = scaler.fit_transform(trainingFeatures)
-print("[STATUS] Creating the classifier..")
-
-if classifierType == 'SVC':
-    # SVC classifier
-    scaler = StandardScaler()
-    train_data = scaler.fit_transform(trainingFeatures)
-    classifier = SVC(C=1, cache_size=200, class_weight='balanced', coef0=0.0,
-      decision_function_shape='ovr', degree=3, gamma='auto', kernel='rbf',
-      max_iter=-1, probability=False, random_state=None, shrinking=True,
-      tol=0.001, verbose=False)
-elif classifierType == 'Linear SVC':
-    # Linear SVC classifier
-    scaler = StandardScaler()
-    train_data = scaler.fit_transform(trainingFeatures)
-    classifier = LinearSVC(random_state=13, dual=False)
-elif classifierType == 'Neural Network':
-    # Neural Network
-    PCT = PCA(n_components=13)
-    PCT.fit(trainingFeatures)
-    trainingFeatures = PCT.singular_values_
-    classifier = MLPClassifier(learning_rate='adaptive',  max_iter=1000)
-elif classifierType == 'K Nearest Neighbor':
-    # Kth nearest neighbor
-    classifier = KNeighborsClassifier(10)
+successRate = []
+for x in range(3,14):
+    # initializing feature vectors and training labels
+    trainingFeatures = []
+    trainingLabels = []
+    # begin texture feature extraction for each object list
+    trainingFeatures, trainingLabels = coins.Training(penniesList, 'penny', trainingFeatures, trainingLabels, reduceFeatures = x)
+    trainingFeatures, trainingLabels = coins.Training(nickelsList, 'nickel', trainingFeatures, trainingLabels, reduceFeatures = x)
+    trainingFeatures, trainingLabels = coins.Training(dimesList, 'dime', trainingFeatures, trainingLabels, reduceFeatures = x)
+    trainingFeatures, trainingLabels = coins.Training(quartersList, 'quarter', trainingFeatures, trainingLabels, reduceFeatures = x)
 
 
-# fit classifier with training data
-print("[STATUS] Fitting data/label to model..")
-classifier = classifier.fit(trainingFeatures, trainingLabels)
+    # have a look at the size of our feature vector and labels
+    # print("Training features: {}".format(np.array(trainingFeatures).shape[1]))
+    # print("Training labels: {}".format(np.array(trainingLabels).shape[0]))
+
+    #TODO (if needed) Keep adding classsifiers from
+    # https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html#sphx-glr-auto-examples-classification-plot-classifier-comparison-py
+
+    print("[STATUS] Creating the classifier..")
+
+    if classifierType == 'SVC':
+        # SVC classifier
+        # scaler = StandardScaler()
+        # train_data = scaler.fit_transform(trainingFeatures)
+        classifier = SVC(C=1, cache_size=200, class_weight='balanced', coef0=0.0,
+          decision_function_shape='ovr', degree=3, gamma='auto', kernel='rbf',
+          max_iter=-1, probability=False, random_state=None, shrinking=True,
+          tol=0.001, verbose=False)
+    elif classifierType == 'Linear SVC':
+        # Linear SVC classifier
+        # scaler = StandardScaler()
+        # train_data = scaler.fit_transform(trainingFeatures)
+        classifier = LinearSVC(random_state=x, dual=False, fit_intercept=True)
+    elif classifierType == 'Neural Network':
+        # Neural Network
+        PCT = PCA(n_components=13)
+        PCT.fit(trainingFeatures)
+        classifier = MLPClassifier(learning_rate='adaptive',  max_iter=1000)
+    elif classifierType == 'K Nearest Neighbor':
+        # Kth nearest neighbor
+        classifier = KNeighborsClassifier(10)
+
+    # fit classifier with training data
+    print("[STATUS] Fitting data/label to model..")
+    # classifier = classifier.fit(PCT.singular_values_ , trainingLabels)
+    # classifier = classifier.fit(train_data, trainingLabels)
+    classifier = classifier.fit(trainingFeatures, trainingLabels)
 
 
-# # create the classifier
-# print("[STATUS] Creating the classifier..")
-# clf_svm = LinearSVC(random_state=13, dual=False)
-#
-# # fit the training data and labels
-# print("[STATUS] Fitting data/label to model..")
-# clf_svm.fit(trainingFeatures, trainingLabels)
+    ########################################################################################################################
+    # make predictions for each coin in the test set
 
-########################################################################################################################
+    prediction, success = coins.Testing(testCoinsList, classifier, validationCRTstring, plot=False, reduceFeatures=x)
+    successRate.append(success)
 
-# get test images from file
-testPath = 'TestingImages3/'
-testNames = os.listdir(testPath)
-
-# loop through test images, detect coins, and add them to a list
-testCoinsList = []
-for i in testNames:
-    imagePath = testPath + i
-    testCoinsFromImage = coins.CoinSegmentation(imagePath, Hough)
-    if testCoinsFromImage:
-        testCoinsList += testCoinsFromImage
-
-# make predictions for each coin in the test set
-prediction = coins.Testing(testCoinsList, classifier)
-#prediction = coins.Testing(testCoinsList, clf_svm)
+minimumFeatures = 3
+for a in successRate:
+    print("Success Rate: {} % with {} features".format(a, minimumFeatures))
+    minimumFeatures += 1
 
 
