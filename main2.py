@@ -18,11 +18,6 @@ debug = False
 # Hough method toggle
 Hough = True
 
-# Shape features toggle
-shape = True
-
-# Classifier Type
-classifierType = 'QDA'
 
 # initializing correct coin string
 d = 'dime'
