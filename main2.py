@@ -1,21 +1,16 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 import os
 from sklearn.svm import LinearSVC, SVC
-from sklearn.neural_network import MLPClassifier
-from sklearn import preprocessing
-import pandas
-from sklearn.ensemble import AdaBoostClassifier
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 
 # import segmentation functions housed in separate file
 import coinSegFunctions as coins
+
+# checks the correct testing string
+checkTest = False
 
 # debugging toggle
 debug = False
@@ -38,7 +33,9 @@ p = 'penny'
 validationCRTstring = [q, d, p, q, q, q, d, p, q, p, n, p, d, q, n, n, n, p, d, q, p, p, d, d, q, d, q, n, q, n, p, q,
                        n, n, d, q, d, q, p, d, p, p, d, q, p, q, n, d, p, p, q, q, d, n, p, p, p, d, n, n, p, p, d, d]
 
-testCRTstring = []
+testCRTstring = [q, p, n, q, p, q, d, p, d, p, q, d, d, n, p, d, n, d, d, n, d, p, p, p, d, p, n, q, n, d,
+                 q, p, q, n, d, d, p, q, n, n, q, p, q, n, q, q, q, n, d, q, d, p, q, d, q, p, n, q, n, p, p, n, q, d]
+
 
 # initializing training set
 trainPath = 'TrainingImages3/'
@@ -49,14 +46,14 @@ trainingShapeFeatures = []
 trainingShapeLabels = []
 
 # determining location of coin type in trainNames
-nickels = [4, 5, 6, 7]  # once more is included, should change to nickels = [0,1,2]
-pennies = [8, 9, 10, 11]  # pennies = [3,4,5]
+nickels = [4, 5, 6, 7]
+pennies = [8, 9, 10, 11]
 dimes = [0, 1, 2, 3]
-quarters = [12, 13, 14, 15]  # etc
+quarters = [12, 13, 14, 15]
 
 
 ########################################################################################################################
-# Creating List of all segmented coins for training input
+# Creating segmented coin images from  training image set
 print('\n')
 print("processing training image set...")
 
@@ -87,9 +84,9 @@ for a in range(len(quarters)):
     quartersList += quartersFromImage
     quarterShapes += shapeFeatures
 
-# remove last two false segmentations
-quartersList = quartersList[:36]
-quarterShapes = quarterShapes[:36]
+    # remove last two false segmentations
+    quartersList = quartersList[:36]
+    quarterShapes = quarterShapes[:36]
 
 dimesList = []
 dimeShapes = []
@@ -100,13 +97,13 @@ for a in range(len(dimes)):
     dimesList += dimesFromImage
     dimeShapes += shapeFeatures
 ########################################################################################################################
+# Creating segmented coin images from  training image set
 print('\n')
 print("processing validation image set...")
 # get test images from file
-testPath = 'ValidationSet/'
+testPath = 'testingImages3/'
 testNames = os.listdir(testPath)
 
-# loop through test images, detect coins, and add them to a list
 testCoinsList = []
 testCoinsShapes = []
 for i in testNames:
@@ -116,7 +113,17 @@ for i in testNames:
         testCoinsList += testCoinsFromImage
         testCoinsShapes += shapeFeatures
 
+# verify that the string of correct coins is correct
+if checkTest:
+    for a in range(len(testCoinsList)):
+        cv2.namedWindow("Individual Segmentations", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Individual Segmentations", 700, 1000)
+        cv2.putText(testCoinsList[a], testCRTstring[a], (200, 300), cv2.FONT_HERSHEY_SIMPLEX, 5.0, (0, 255, 255), 5)
+        cv2.imshow("Individual Segmentations", testCoinsList[a])
+        cv2.waitKey(0)
+
 ########################################################################################################################
+# check segmentation of training images
 if debug:
     for a in range(len(penniesList)):
         cv2.namedWindow("Individual Segmentations", cv2.WINDOW_NORMAL)
@@ -143,7 +150,7 @@ if debug:
         cv2.waitKey(0)
 
 ########################################################################################################################
-# loop over the training dataset
+# loop over segmented coins from training set
 print('\n')
 print('[STATUS] Started extracting Haralick textures..')
 successRate = []
@@ -151,22 +158,22 @@ successRate = []
 # begin texture feature extraction for each object list
 # penny extraction & shape Features addition
 print("penny feature extractions in progress...")
-pennyFeatures, pennyLabels = coins.Training(penniesList, 'penny', reduceFeatures=9)
+pennyFeatures, pennyLabels = coins.Training(penniesList, 'penny', reduceFeatures = 10)
 pennyFeatures = [np.insert(pennyFeatures[a], 0, pennyShapes[a]) for a in range(len(pennyFeatures))]
 
 # nickel extraction & shape Features addition
 print("nickel feature extractions in progress...")
-nickelFeatures, nickelLabels = coins.Training(nickelsList, 'nickel',  reduceFeatures=9)
+nickelFeatures, nickelLabels = coins.Training(nickelsList, 'nickel',  reduceFeatures = 10)
 nickelFeatures = [np.insert(nickelFeatures[a], 0, nickelShapes[a]) for a in range(len(nickelFeatures))]
 
 # dime extraction & shape Features addition
 print("dime feature extractions in progress...")
-dimeFeatures, dimeLabels = coins.Training(dimesList, 'dime', reduceFeatures=9)
+dimeFeatures, dimeLabels = coins.Training(dimesList, 'dime', reduceFeatures = 10)
 dimeFeatures = [np.insert(dimeFeatures[a], 0, dimeShapes[a]) for a in range(len(dimeFeatures))]
 
 # quarter extraction & shape Features addition
 print("quarter feature extractions in progress...")
-quarterFeatures, quarterLabels = coins.Training(quartersList, 'quarter', reduceFeatures=9)
+quarterFeatures, quarterLabels = coins.Training(quartersList, 'quarter', reduceFeatures = 10)
 quarterFeatures = [np.insert(quarterFeatures[a], 0, quarterShapes[a]) for a in range(len(quarterFeatures))]
 
 # combining features and labels
@@ -177,54 +184,42 @@ trainingFeatures.extend(nickelFeatures), trainingLabels.extend(nickelLabels)
 trainingFeatures.extend(dimeFeatures), trainingLabels.extend(dimeLabels)
 trainingFeatures.extend(quarterFeatures), trainingLabels.extend(quarterLabels)
 
-# have a look at the size of our feature vector and labels
-# print("Training features: {}".format(np.array(trainingFeatures).shape[1]))
-# print("Training labels: {}".format(np.array(trainingLabels).shape[0]))
-
-#TODO (if needed) Keep adding classsifiers from
-# https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html#sphx-glr-auto-examples-classification-plot-classifier-comparison-py
-
-print("[STATUS] Creating the classifier..")
-
-if classifierType == 'SVC':
-    # SVC classifier
-    # scaler = StandardScaler()
-    # train_data = scaler.fit_transform(trainingFeatures)
-    classifier = SVC(C=.001, cache_size=200, class_weight='balanced', coef0=0.0,
-      decision_function_shape='ovr', degree=3, gamma='auto', kernel='linear',
-      max_iter=-1, probability=False, random_state=None, shrinking=True,
-      tol=0.001, verbose=False)
-elif classifierType == 'Linear SVC':
-    # Linear SVC classifier
-    # scaler = StandardScaler()
-    # train_data = scaler.fit_transform(trainingFeatures)
-    classifier = LinearSVC(C=0.001, dual=False, fit_intercept=True, max_iter=5000)
-elif classifierType == 'QDA':
-    # Neural Network
-    # PCT = PCA(n_components=12)
-    # PCT.fit(trainingFeatures)
-    # classifier = MLPClassifier(activation='logistic', max_iter=5000)
-    classifier = QuadraticDiscriminantAnalysis(reg_param=0.01)
-elif classifierType == 'K Nearest Neighbor':
-    # Kth nearest neighbor
-    classifier = KNeighborsClassifier(12)
-
-# fit classifier with training data
-print("[STATUS] Fitting data/label to model..")
-# classifier = classifier.fit(PCT.singular_values_ , trainingLabels)
-# classifier = classifier.fit(train_data, trainingLabels)
-classifier = classifier.fit(trainingFeatures, trainingLabels)
-
-
 ########################################################################################################################
-# make predictions for each coin in the test set
+# create various classifiers
+print("[STATUS] Creating the classifier..")
+classList = ['QDA', 'Linear SVC', 'K Nearest Neighbor', 'Random Forest']
+for x in classList:
+    classifierType = x
+    if classifierType == 'SVC':
+        # SVC classifier
+        # scaler = StandardScaler()
+        # train_data = scaler.fit_transform(trainingFeatures)
+        classifier = SVC(C=0.0001, kernel='linear')
+    elif classifierType == 'Linear SVC':
+        # Linear SVC classifier
+        # scaler = StandardScaler()
+        # train_data = scaler.fit_transform(trainingFeatures)
+        classifier = LinearSVC(C=0.0001, random_state=12, dual=False, fit_intercept=False)
+    elif classifierType == 'QDA':
+        # Neural Network
+        # PCT = PCA(n_components=12)
+        # PCT.fit(trainingFeatures)
+        # classifier = MLPClassifier(activation='logistic', max_iter=5000)
+        classifier = QuadraticDiscriminantAnalysis(reg_param=0.01)
+    elif classifierType == 'K Nearest Neighbor':
+        # Kth nearest neighbor
+        classifier = KNeighborsClassifier(15)
 
-prediction, success = coins.Testing(testCoinsList, classifier, validationCRTstring, testCoinsShapes,  plot=False, reduceFeatures=9)
-successRate.append(success)
+    elif classifierType == 'Random Forest':
+        classifier = RandomForestClassifier(n_estimators=1000, max_features='sqrt', class_weight='balanced_subsample')
 
-# minimumFeatures = np.min(featureSize)
-# for a in successRate:
-#     print("Success Rate: {} % with {} features".format(a, minimumFeatures+2))
-#     minimumFeatures += 1
+    # Createing model by fitting classifier with training data
+    print("[STATUS] Fitting data/label to model..")
+    classifier = classifier.fit(trainingFeatures, trainingLabels)
+
+    # make predictions for each coin in the test set
+    print("Processing/predicting validation set...")
+    prediction = coins.Testing(testCoinsList, classifier, testCRTstring, testCoinsShapes,  plot=False, reduceFeatures=10)
+
 
 
