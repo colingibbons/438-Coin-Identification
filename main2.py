@@ -184,27 +184,17 @@ print("[STATUS] Creating the classifier..")
 classList = ['QDA', 'Linear SVC', 'K Nearest Neighbor', 'Random Forest']
 for x in classList:
     classifierType = x
-    if classifierType == 'SVC':
-        # SVC classifier
-        # scaler = StandardScaler()
-        # train_data = scaler.fit_transform(trainingFeatures)
-        classifier = SVC(C=0.0001, kernel='linear')
-    elif classifierType == 'Linear SVC':
+    if classifierType == 'Linear SVC':
         # Linear SVC classifier
-        # scaler = StandardScaler()
-        # train_data = scaler.fit_transform(trainingFeatures)
         classifier = LinearSVC(C=0.0001, random_state=12, dual=False, fit_intercept=False)
     elif classifierType == 'QDA':
-        # Neural Network
-        # PCT = PCA(n_components=12)
-        # PCT.fit(trainingFeatures)
-        # classifier = MLPClassifier(activation='logistic', max_iter=5000)
+        # Quadratic Discriminant Analysis classifier
         classifier = QuadraticDiscriminantAnalysis(reg_param=0.01)
     elif classifierType == 'K Nearest Neighbor':
         # Kth nearest neighbor
         classifier = KNeighborsClassifier(15)
-
     elif classifierType == 'Random Forest':
+        # Random forest classifier
         classifier = RandomForestClassifier(n_estimators=1000, max_features='sqrt', class_weight='balanced_subsample')
 
     # Createing model by fitting classifier with training data
@@ -214,6 +204,3 @@ for x in classList:
     # make predictions for each coin in the test set
     print("Processing/predicting validation set...")
     prediction = coins.Testing(testCoinsList, classifier, testCRTstring, testCoinsShapes,  plot=False, reduceFeatures=10)
-
-
-
