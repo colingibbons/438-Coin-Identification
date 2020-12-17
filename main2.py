@@ -91,7 +91,7 @@ for a in range(len(dimes)):
     dimesList += dimesFromImage
     dimeShapes += shapeFeatures
 ########################################################################################################################
-# Creating segmented coin images from  training image set
+# Creating segmented coin images from testing image set
 print('\n')
 print("processing validation image set...")
 # get test images from file
