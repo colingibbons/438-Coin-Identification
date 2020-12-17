@@ -18,7 +18,6 @@ debug = False
 # Hough method toggle
 Hough = True
 
-
 # initializing correct coin string
 d = 'dime'
 q = 'quarter'
