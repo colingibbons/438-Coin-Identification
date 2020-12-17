@@ -147,7 +147,6 @@ if debug:
 # loop over segmented coins from training set
 print('\n')
 print('[STATUS] Started extracting Haralick textures..')
-successRate = []
 
 # begin texture feature extraction for each object list
 # penny extraction & shape Features addition
